@@ -61,6 +61,12 @@ if [[ "$OPTION" == "1" ]]; then
   read -p "Enter option [1/2]: " BOT_TYPE
 
   read -p "Bot name: " BOT_NAME
+if [[ -z \"$BOT_NAME\" ]]; then
+  echo \"❌ Bot name cannot be empty!\"
+  exit 1
+fi
+
+  read -p "Bot name: " BOT_NAME
   BOT_FOLDER="$BOTS_DIR/$BOT_NAME"
 
   if [[ -d "$BOT_FOLDER" ]]; then
