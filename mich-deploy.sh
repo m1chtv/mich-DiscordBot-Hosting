@@ -4,10 +4,11 @@
 # 🛡️ Secure Discord Bot Hosting Environment + Web UI
 # Supports: discord.js (DJS) & discord.py (DPY)
 # Auto Restart + System Monitoring via Web
-# By: mich | github.com/yourname
+# By: mich | github.com/m1chtv
 # ─────────────────────────────────────────────
 
-set -e
+set -euo pipefail
+IFS=$'\n\t'
 
 ### 📁 Directory Setup ###
 PROJECT_DIR="$HOME/discord-bots"
@@ -55,39 +56,50 @@ fi
 
 ### 🚧 Start Flow Based on Selection ###
 if [[ "$OPTION" == "1" ]]; then
-echo -e "\n🧠 Select bot type:"
-echo "1) discord.js (JavaScript)"
-echo "2) discord.py (Python)"
-read -rp "Enter option [1/2]: " BOT_TYPE
+  echo -e "\n🧠 Select bot type:"
+  echo "1) discord.js (JavaScript)"
+  echo "2) discord.py (Python)"
+  read -rp "Enter option [1/2]: " BOT_TYPE
 
-read -rp "Bot name: " BOT_NAME
-if [[ -z "$BOT_NAME" ]]; then
-  echo "❌ Bot name cannot be empty!"
-  exit 1
-fi
+  read -rp "Bot name: " BOT_NAME
+  if [[ -z "$BOT_NAME" ]]; then
+    echo "❌ Bot name cannot be empty!"
+    exit 1
+  fi
 
-BOT_FOLDER="$BOTS_DIR/$BOT_NAME"
+  # Sanitize BOT_NAME: remove spaces and special chars (optional)
+  BOT_NAME="${BOT_NAME//[^a-zA-Z0-9_-]/}"
 
-if [[ -d "$BOT_FOLDER" ]]; then
-  echo "❌ Bot with that name already exists!"
-  exit 1
-fi
+  BOT_FOLDER="$BOTS_DIR/$BOT_NAME"
 
-mkdir -p "$BOT_FOLDER"
-echo "📂 Created folder: $BOT_FOLDER"
+  if [[ -d "$BOT_FOLDER" ]]; then
+    echo "❌ Bot with that name already exists!"
+    exit 1
+  fi
 
-echo "⬆️ Please upload your bot code to: $BOT_FOLDER"
-read -n 1 -s -rp "Press any key to continue..."
+  mkdir -p "$BOT_FOLDER"
+  echo "📂 Created folder: $BOT_FOLDER"
+
+  echo "⬆️ Please upload your bot code to: $BOT_FOLDER"
+  read -n 1 -s -rp "Press any key to continue..."
 
   if [[ "$BOT_TYPE" == "1" ]]; then
     cd "$BOT_FOLDER"
-    npm install || { echo "❌ npm install failed"; exit 1; }
+    if [[ -f package.json ]]; then
+      npm install || { echo "❌ npm install failed"; exit 1; }
+    else
+      echo "⚠️ package.json not found, skipping npm install."
+    fi
     echo "🚀 Starting $BOT_NAME with PM2..."
     pm2 start index.js --name "$BOT_NAME" --log "$LOGS_DIR/$BOT_NAME.log"
 
   elif [[ "$BOT_TYPE" == "2" ]]; then
     cd "$BOT_FOLDER"
-    pip3 install -r requirements.txt || { echo "❌ pip install failed"; exit 1; }
+    if [[ -f requirements.txt ]]; then
+      pip3 install -r requirements.txt || { echo "❌ pip install failed"; exit 1; }
+    else
+      echo "⚠️ requirements.txt not found, skipping pip install."
+    fi
     echo "🚀 Starting $BOT_NAME with PM2..."
     pm2 start "python3 main.py" --name "$BOT_NAME" --log "$LOGS_DIR/$BOT_NAME.log"
   else
@@ -101,7 +113,7 @@ read -n 1 -s -rp "Press any key to continue..."
 
 elif [[ "$OPTION" == "2" ]]; then
   echo "🛠 Available Bots:"
-  ls "$BOTS_DIR"
+  ls -1 "$BOTS_DIR"
   read -rp "Bot name to edit: " BOT_NAME
 
   BOT_FOLDER="$BOTS_DIR/$BOT_NAME"
@@ -111,7 +123,7 @@ elif [[ "$OPTION" == "2" ]]; then
   fi
 
   echo "Opening folder: $BOT_FOLDER"
-  read -n 1 -s -rp "Make changes then press any key to restart bot..."
+  read -n 1 -s -rp "Make your changes then press any key to restart bot..."
 
   pm2 restart "$BOT_NAME"
   echo "♻️ Bot restarted"
@@ -129,7 +141,7 @@ if [[ ! -f package.json ]]; then
   npm install express systeminformation cors --save
 fi
 
-cat <<EOF > index.js
+cat > index.js << 'EOF'
 const express = require("express");
 const si = require("systeminformation");
 const app = express();
@@ -152,15 +164,15 @@ app.get("/api/status", async (req, res) => {
 });
 
 app.use(express.static("public"));
-app.listen(PORT, () => console.log(`\ud83c\udf10 Monitor running on http://localhost:${PORT}`));
+app.listen(PORT, () => console.log(`🌐 Monitor running on http://localhost:${PORT}`));
 EOF
 
 mkdir -p public
-cat <<EOF > public/index.html
+cat > public/index.html << 'EOF'
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
+  <meta charset="UTF-8" />
   <title>Bot Monitor</title>
   <style>
     body { font-family: monospace; background: #111; color: #0f0; padding: 2rem; }
@@ -170,7 +182,7 @@ cat <<EOF > public/index.html
   </style>
 </head>
 <body>
-  <h1>📱 Discord Bot Monitor</h1>
+  <h1>📡 Discord Bot Monitor</h1>
   <div id="monitor"></div>
   <script>
     async function fetchData() {
@@ -192,7 +204,7 @@ EOF
 pm2 start index.js --name monitor-ui
 pm2 save
 
-### 🛁 Monitoring Summary ###
+### 📡 Monitoring Summary ###
 echo -e "\n📈 To monitor bots:"
 echo "➡️ pm2 list"
 echo "➡️ pm2 logs <bot-name>"
