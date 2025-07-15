@@ -33,8 +33,8 @@ if pm2 list | grep -q discord-bot; then
   echo "2) Edit existing bot"
   read -p "Select option [1/2]: " OPTION
 else
-  echo "1) Setup a new bot"
-  read -p "Press 1 to continue: " OPTION
+  echo "🔄 Setting up new bot..."
+  OPTION=1
 fi
 
 ### 📦 Dependency Check & Install ###
