@@ -55,16 +55,17 @@ fi
 
 ### 🚧 Start Flow Based on Selection ###
 if [[ "$OPTION" == "1" ]]; then
-  echo -e "\n🧐 Select bot type:"
-  echo "1) discord.js (JavaScript)"
-  echo "2) discord.py (Python)"
-  read -rp "Enter option [1/2]: " BOT_TYPE
+echo -e "\n🧠 Select bot type:"
+echo "1) discord.js (JavaScript)"
+echo "2) discord.py (Python)"
+read -rp "Enter option [1/2]: " BOT_TYPE
 
-  read -rp "Bot name: " BOT_NAME
-  if [[ -z "$BOT_NAME" ]]; then
-    echo "❌ Bot name cannot be empty!"
-    exit 1
-  fi
+read -rp "Bot name: " BOT_NAME
+if [[ -z "$BOT_NAME" ]]; then
+  echo "❌ Bot name cannot be empty!"
+  exit 1
+fi
+
 
   BOT_FOLDER="$BOTS_DIR/$BOT_NAME"
 
