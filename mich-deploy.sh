@@ -66,19 +66,18 @@ if [[ -z "$BOT_NAME" ]]; then
   exit 1
 fi
 
+BOT_FOLDER="$BOTS_DIR/$BOT_NAME"
 
-  BOT_FOLDER="$BOTS_DIR/$BOT_NAME"
+if [[ -d "$BOT_FOLDER" ]]; then
+  echo "❌ Bot with that name already exists!"
+  exit 1
+fi
 
-  if [[ -d "$BOT_FOLDER" ]]; then
-    echo "❌ Bot with that name already exists!"
-    exit 1
-  fi
+mkdir -p "$BOT_FOLDER"
+echo "📂 Created folder: $BOT_FOLDER"
 
-  mkdir -p "$BOT_FOLDER"
-  echo "📂 Created folder: $BOT_FOLDER"
-
-  echo "⬆️ Please upload your bot code to: $BOT_FOLDER"
-  read -n 1 -s -rp "Press any key to continue..."
+echo "⬆️ Please upload your bot code to: $BOT_FOLDER"
+read -n 1 -s -rp "Press any key to continue..."
 
   if [[ "$BOT_TYPE" == "1" ]]; then
     cd "$BOT_FOLDER"
