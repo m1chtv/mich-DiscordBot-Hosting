@@ -22,10 +22,6 @@ cd mich-DiscordBot-Hosting
 chmod +x mich-deploy.sh
 ./mich-deploy.sh
 ```
-Or
-```bash
-curl -fsSL https://raw.githubusercontent.com/m1chtv/mich-DiscordBot-Hosting/main/mich-deploy.sh | bash
-```
 
 > ⚠️ Make sure you're running on Ubuntu 20.04+ with `sudo` privileges.
 
