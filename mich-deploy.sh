@@ -2,8 +2,8 @@
 
 # ─────────────────────────────────────────────
 # 🛡️ Secure Discord Bot Hosting Environment + Web UI
-# Supports: discord.js (DJS) & discord.py (DPY)
-# Auto Restart + System Monitoring via Web
+# Supports: discord.js (JavaScript) & discord.py (Python)
+# Features: Auto Restart, System Monitoring Web UI
 # By: mich | github.com/m1chtv
 # ─────────────────────────────────────────────
 
@@ -34,12 +34,11 @@ if pm2 list | grep -qw discord-bot; then
   echo "2) Edit existing bot"
   read -rp "Select option [1/2]: " OPTION
 else
-  echo "🔄 Setting up new bot..."
   OPTION=1
 fi
 
 ### 📦 Dependency Check & Install ###
-echo -e "\n📦 Checking dependencies..."
+echo -e "\n📦 Installing dependencies..."
 sudo apt update -y
 sudo apt install -y curl git ufw unzip python3 python3-pip net-tools build-essential
 
@@ -54,7 +53,7 @@ if ! command -v pm2 &>/dev/null; then
   sudo npm install -g pm2
 fi
 
-### 🚧 Start Flow Based on Selection ###
+### 🚧 Bot Management Flow ###
 if [[ "$OPTION" == "1" ]]; then
   echo -e "\n🧠 Select bot type:"
   echo "1) discord.js (JavaScript)"
@@ -62,54 +61,32 @@ if [[ "$OPTION" == "1" ]]; then
   read -rp "Enter option [1/2]: " BOT_TYPE
 
   read -rp "Bot name: " BOT_NAME
-  if [[ -z "$BOT_NAME" ]]; then
-    echo "❌ Bot name cannot be empty!"
-    exit 1
-  fi
-
-  # Sanitize BOT_NAME: remove spaces and special chars (optional)
   BOT_NAME="${BOT_NAME//[^a-zA-Z0-9_-]/}"
 
-  BOT_FOLDER="$BOTS_DIR/$BOT_NAME"
+  if [[ -z "$BOT_NAME" ]]; then echo "❌ Bot name cannot be empty!"; exit 1; fi
 
-  if [[ -d "$BOT_FOLDER" ]]; then
-    echo "❌ Bot with that name already exists!"
-    exit 1
-  fi
+  BOT_FOLDER="$BOTS_DIR/$BOT_NAME"
+  if [[ -d "$BOT_FOLDER" ]]; then echo "❌ Bot with that name already exists!"; exit 1; fi
 
   mkdir -p "$BOT_FOLDER"
-  echo "📂 Created folder: $BOT_FOLDER"
+  echo "📂 Upload your bot code to: $BOT_FOLDER"
+  read -n 1 -s -rp "Press any key after upload to continue..."
 
-  echo "⬆️ Please upload your bot code to: $BOT_FOLDER"
-  read -n 1 -s -rp "Press any key to continue..."
-
+  cd "$BOT_FOLDER"
   if [[ "$BOT_TYPE" == "1" ]]; then
-    cd "$BOT_FOLDER"
-    if [[ -f package.json ]]; then
-      npm install || { echo "❌ npm install failed"; exit 1; }
-    else
-      echo "⚠️ package.json not found, skipping npm install."
-    fi
-    echo "🚀 Starting $BOT_NAME with PM2..."
+    [[ -f package.json ]] && npm install || echo "⚠️ No package.json found."
     pm2 start index.js --name "$BOT_NAME" --log "$LOGS_DIR/$BOT_NAME.log"
-
   elif [[ "$BOT_TYPE" == "2" ]]; then
-    cd "$BOT_FOLDER"
-    if [[ -f requirements.txt ]]; then
-      pip3 install -r requirements.txt || { echo "❌ pip install failed"; exit 1; }
-    else
-      echo "⚠️ requirements.txt not found, skipping pip install."
-    fi
-    echo "🚀 Starting $BOT_NAME with PM2..."
+    [[ -f requirements.txt ]] && pip3 install -r requirements.txt || echo "⚠️ No requirements.txt found."
     pm2 start "python3 main.py" --name "$BOT_NAME" --log "$LOGS_DIR/$BOT_NAME.log"
   else
-    echo "❌ Invalid selection"
+    echo "❌ Invalid bot type selected."
     exit 1
   fi
 
   pm2 save
   pm2 startup | sudo tee /dev/null | bash
-  echo "✅ Bot $BOT_NAME added successfully!"
+  echo "✅ Bot '$BOT_NAME' added and running."
 
 elif [[ "$OPTION" == "2" ]]; then
   echo "🛠 Available Bots:"
@@ -117,23 +94,20 @@ elif [[ "$OPTION" == "2" ]]; then
   read -rp "Bot name to edit: " BOT_NAME
 
   BOT_FOLDER="$BOTS_DIR/$BOT_NAME"
-  if [[ ! -d "$BOT_FOLDER" ]]; then
-    echo "❌ Bot not found"
-    exit 1
-  fi
+  if [[ ! -d "$BOT_FOLDER" ]]; then echo "❌ Bot not found"; exit 1; fi
 
   echo "Opening folder: $BOT_FOLDER"
-  read -n 1 -s -rp "Make your changes then press any key to restart bot..."
+  read -n 1 -s -rp "Make your changes then press any key to restart..."
 
   pm2 restart "$BOT_NAME"
-  echo "♻️ Bot restarted"
+  echo "♻️ Bot '$BOT_NAME' restarted."
 else
   echo "❌ Invalid option"
   exit 1
 fi
 
-### 📊 Start Monitoring UI ###
-echo -e "\n📊 Installing Monitoring UI (Node.js Express)..."
+### 📊 Web UI for Monitoring ###
+echo -e "\n📊 Setting up Monitoring UI..."
 cd "$UI_DIR"
 
 if [[ ! -f package.json ]]; then
@@ -146,9 +120,10 @@ const express = require("express");
 const si = require("systeminformation");
 const app = express();
 const PORT = 3000;
+
 app.use(require("cors")());
 
-app.get("/api/status", async (req, res) => {
+app.get("/api/status", async (_, res) => {
   try {
     const [cpu, mem, fs, net, processes] = await Promise.all([
       si.currentLoad(),
@@ -164,7 +139,7 @@ app.get("/api/status", async (req, res) => {
 });
 
 app.use(express.static("public"));
-app.listen(PORT, () => console.log(`🌐 Monitor running on http://localhost:${PORT}`));
+app.listen(PORT, () => console.log(`🌐 Monitor: http://localhost:${PORT}`));
 EOF
 
 mkdir -p public
@@ -172,7 +147,8 @@ cat > public/index.html << 'EOF'
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Bot Monitor</title>
   <style>
     body { font-family: monospace; background: #111; color: #0f0; padding: 2rem; }
@@ -191,7 +167,7 @@ cat > public/index.html << 'EOF'
         const data = await res.json();
         document.getElementById('monitor').innerHTML = '<pre>' + JSON.stringify(data, null, 2) + '</pre>';
       } catch (err) {
-        document.getElementById('monitor').innerText = '❌ Error loading monitor: ' + err;
+        document.getElementById('monitor').innerText = '❌ Error: ' + err;
       }
     }
     fetchData();
@@ -204,12 +180,11 @@ EOF
 pm2 start index.js --name monitor-ui
 pm2 save
 
-### 📡 Monitoring Summary ###
-echo -e "\n📈 To monitor bots:"
+### ℹ️ Summary ###
+echo -e "\n📈 Monitor via:"
 echo "➡️ pm2 list"
 echo "➡️ pm2 logs <bot-name>"
 echo "➡️ http://<server-ip>:3000"
-echo "➡️ Restart server = bots auto start 🔁"
-
-echo "✅ Setup finished successfully."
+echo "➡️ Auto start enabled on reboot"
+echo "✅ Setup complete."
 exit 0
