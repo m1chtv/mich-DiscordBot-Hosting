@@ -64,10 +64,13 @@ if [[ "$BOT_TYPE" != "1" && "$BOT_TYPE" != "2" ]]; then
   exit 1
 fi
 
-  read -rp "Bot name: " BOT_NAME
-  BOT_NAME="${BOT_NAME//[^a-zA-Z0-9_-]/}"
+read -rp "Bot name: " BOT_NAME
+BOT_NAME="${BOT_NAME//[^a-zA-Z0-9_-]/}"
 
-  if [[ -z "$BOT_NAME" ]]; then echo "❌ Bot name cannot be empty!"; exit 1; fi
+if [[ -z "$BOT_NAME" ]]; then
+  echo "❌ Bot name cannot be empty!"
+  exit 1
+fi
 
   BOT_FOLDER="$BOTS_DIR/$BOT_NAME"
   if [[ -d "$BOT_FOLDER" ]]; then echo "❌ Bot with that name already exists!"; exit 1; fi
