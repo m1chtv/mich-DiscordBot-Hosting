@@ -54,26 +54,30 @@ if ! command -v pm2 &>/dev/null; then
 fi
 
 ### 🚧 Bot Management Flow ###
-echo -e "\n🧠 Select bot type:"
-echo "1) discord.js (JavaScript)"
-echo "2) discord.py (Python)"
-read -rp "Enter option [1/2]: " BOT_TYPE
+if [[ "$OPTION" == "1" ]]; then
+  echo -e "\n🧠 Select bot type:"
+  echo "1) discord.js (JavaScript)"
+  echo "2) discord.py (Python)"
+  read -rp "Enter option [1/2]: " BOT_TYPE
 
-if [[ "$BOT_TYPE" != "1" && "$BOT_TYPE" != "2" ]]; then
-  echo "❌ Invalid bot type selected."
-  exit 1
-fi
+  if [[ "$BOT_TYPE" != "1" && "$BOT_TYPE" != "2" ]]; then
+    echo "❌ Invalid bot type selected."
+    exit 1
+  fi
 
-read -rp "Bot name: " BOT_NAME
-BOT_NAME="${BOT_NAME//[^a-zA-Z0-9_-]/}"
+  read -rp "Bot name: " BOT_NAME
+  BOT_NAME="${BOT_NAME//[^a-zA-Z0-9_-]/}"
 
-if [[ -z "$BOT_NAME" ]]; then
-  echo "❌ Bot name cannot be empty!"
-  exit 1
-fi
+  if [[ -z "$BOT_NAME" ]]; then
+    echo "❌ Bot name cannot be empty!"
+    exit 1
+  fi
 
   BOT_FOLDER="$BOTS_DIR/$BOT_NAME"
-  if [[ -d "$BOT_FOLDER" ]]; then echo "❌ Bot with that name already exists!"; exit 1; fi
+  if [[ -d "$BOT_FOLDER" ]]; then
+    echo "❌ Bot with that name already exists!"
+    exit 1
+  fi
 
   mkdir -p "$BOT_FOLDER"
   echo "📂 Upload your bot code to: $BOT_FOLDER"
@@ -86,9 +90,6 @@ fi
   elif [[ "$BOT_TYPE" == "2" ]]; then
     [[ -f requirements.txt ]] && pip3 install -r requirements.txt || echo "⚠️ No requirements.txt found."
     pm2 start "python3 main.py" --name "$BOT_NAME" --log "$LOGS_DIR/$BOT_NAME.log"
-  else
-    echo "❌ Invalid bot type selected."
-    exit 1
   fi
 
   pm2 save
@@ -101,7 +102,10 @@ elif [[ "$OPTION" == "2" ]]; then
   read -rp "Bot name to edit: " BOT_NAME
 
   BOT_FOLDER="$BOTS_DIR/$BOT_NAME"
-  if [[ ! -d "$BOT_FOLDER" ]]; then echo "❌ Bot not found"; exit 1; fi
+  if [[ ! -d "$BOT_FOLDER" ]]; then
+    echo "❌ Bot not found"
+    exit 1
+  fi
 
   echo "Opening folder: $BOT_FOLDER"
   read -n 1 -s -rp "Make your changes then press any key to restart..."
