@@ -87,7 +87,7 @@ if [[ "$OPTION" == "1" ]]; then
   if [[ "$BOT_TYPE" == "1" ]]; then
     [[ -f package.json ]] && npm install || echo "⚠️ No package.json found."
     pm2 start index.js --name "$BOT_NAME" --log "$LOGS_DIR/$BOT_NAME.log"
-  elif [[ "$BOT_TYPE" == "2" ]]; then
+  else
     [[ -f requirements.txt ]] && pip3 install -r requirements.txt || echo "⚠️ No requirements.txt found."
     pm2 start "python3 main.py" --name "$BOT_NAME" --log "$LOGS_DIR/$BOT_NAME.log"
   fi
