@@ -18,7 +18,7 @@ UI_DIR="$PROJECT_DIR/ui"
 
 mkdir -p "$BOTS_DIR" "$LOGS_DIR" "$UI_DIR"
 
-### 🌐 Display Banner ###
+### 🌐 Banner ###
 echo -e "\n\e[35m🔧 Secure Discord Bot Hosting Setup\e[0m"
 echo "-----------------------------------------"
 echo "Location: $PROJECT_DIR"
@@ -27,7 +27,7 @@ echo "Logs Folder: $LOGS_DIR"
 echo "UI: http://<your-server-ip>:3000"
 echo "-----------------------------------------"
 
-### 🔍 Detect Existing Setup ###
+### 🔍 Check Existing ###
 if pm2 list | grep -qw discord-bot; then
   echo "⚠️  A Discord bot environment already exists."
   echo "1) Add a new bot"
@@ -37,7 +37,7 @@ else
   OPTION=1
 fi
 
-### 📦 Dependency Check & Install ###
+### 📦 Dependencies ###
 echo -e "\n📦 Installing dependencies..."
 sudo apt update -y
 sudo apt install -y curl git ufw unzip python3 python3-pip net-tools build-essential
@@ -53,7 +53,7 @@ if ! command -v pm2 &>/dev/null; then
   sudo npm install -g pm2
 fi
 
-### 🚧 Bot Management Flow ###
+### 🚧 Bot Setup ###
 if [[ "$OPTION" == "1" ]]; then
   echo -e "\n🧠 Select bot type:"
   echo "1) discord.js (JavaScript)"
@@ -84,6 +84,7 @@ if [[ "$OPTION" == "1" ]]; then
   read -n 1 -s -rp "Press any key after upload to continue..."
 
   cd "$BOT_FOLDER"
+
   if [[ "$BOT_TYPE" == "1" ]]; then
     [[ -f package.json ]] && npm install || echo "⚠️ No package.json found."
     pm2 start index.js --name "$BOT_NAME" --log "$LOGS_DIR/$BOT_NAME.log"
@@ -117,7 +118,7 @@ else
   exit 1
 fi
 
-### 📊 Web UI for Monitoring ###
+### 📊 Monitoring UI ###
 echo -e "\n📊 Setting up Monitoring UI..."
 cd "$UI_DIR"
 
