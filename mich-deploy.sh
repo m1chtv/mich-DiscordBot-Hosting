@@ -100,7 +100,8 @@ if [[ "$OPTION" == "1" ]]; then
   fi
 
   pm2 save
-  pm2 startup | sudo tee /dev/null | bash
+  STARTUP_CMD=$(pm2 startup | grep sudo)
+eval "$STARTUP_CMD"
   echo "✅ Bot '$BOT_NAME' added and running."
 
 elif [[ "$OPTION" == "2" ]]; then
