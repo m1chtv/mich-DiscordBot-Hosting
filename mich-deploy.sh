@@ -55,15 +55,18 @@ fi
 
 ### 🚧 Bot Setup ###
 if [[ "$OPTION" == "1" ]]; then
-  echo -e "\n🧠 Select bot type:"
-  echo "1) discord.js (JavaScript)"
-  echo "2) discord.py (Python)"
-  read -rp "Enter option [1/2]: " BOT_TYPE
+  while true; do
+    echo -e "\n🧠 Select bot type:"
+    echo "1) discord.js (JavaScript)"
+    echo "2) discord.py (Python)"
+    read -rp "Enter option [1/2]: " BOT_TYPE
 
-  if [[ "$BOT_TYPE" != "1" && "$BOT_TYPE" != "2" ]]; then
-    echo "❌ Invalid bot type selected."
-    exit 1
-  fi
+    if [[ "$BOT_TYPE" == "1" || "$BOT_TYPE" == "2" ]]; then
+      break
+    else
+      echo "❌ Invalid bot type. Please enter 1 or 2."
+    fi
+  done
 
   read -rp "Bot name: " BOT_NAME
   BOT_NAME="${BOT_NAME//[^a-zA-Z0-9_-]/}"
