@@ -2,6 +2,7 @@
 if [ -z "$BASH_VERSION" ]; then exec bash "$0" "$@"; fi
 set -euo pipefail
 IFS=$'\n\t'
+clear
 
 # ─────────────────────────────────────────────
 # 🛡️ mich Discord Bot Hosting Environment + Web UI
@@ -28,7 +29,7 @@ echo "UI: http://localhost:3000"
 echo "-----------------------------------------"
 
 ### 🧠 Detect Existing Bots ###
-BOT_COUNT=$(pm2 list | grep -E "$BOTS_DIR" | wc -l || true)
+BOT_COUNT=$(pm2 jlist | grep -c "$BOTS_DIR" || true)
 if [[ $BOT_COUNT -gt 0 ]]; then
   echo "⚠️  Bot environment already set up."
   echo "1) Add a new bot"
@@ -79,7 +80,8 @@ if [[ "$OPTION" == "1" ]]; then
   read -n 1 -s -rp "Press any key after upload to continue..."
 
   cd "$BOT_FOLDER"
-
+  clear
+  
   if [[ "$BOT_TYPE" == "1" ]]; then
     [[ ! -f index.js ]] && echo "❌ index.js not found." && exit 1
     [[ -f package.json ]] && npm install || echo "⚠️ No package.json found."
@@ -146,7 +148,7 @@ app.get("/api/status", async (_, res) => {
   }
 });
 app.use(express.static("public"));
-app.listen(PORT, '127.0.0.1', () => console.log(`🌐 Monitor: http://localhost:${PORT}`));
+app.listen(PORT, '0.0.0.0', () => console.log(`🌐 Monitor: http://localhost:${PORT}`));
 EOF
 
 mkdir -p public
