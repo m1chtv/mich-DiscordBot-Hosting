@@ -34,8 +34,9 @@ if [[ $BOT_COUNT -gt 0 ]]; then
   echo "⚠️  Bot environment already set up."
   echo "1) Add a new bot"
   echo "2) Edit existing bot"
-  echo "3) Exit"
-  read -rp "Select option [1/2/3]: " OPTION
+  echo "3) Remove/Stop a bot"
+  echo "4) Exit"
+  read -rp "Select option [1/2/3/4]: " OPTION
 else
   OPTION=1
 fi
@@ -43,7 +44,11 @@ fi
 ### 📦 Dependencies ###
 echo -e "\n📦 Installing dependencies..."
 sudo apt update -y
-sudo apt install -y curl git ufw unzip python3 python3-pip net-tools build-essential
+
+DEPS=(curl git ufw unzip python3 python3-pip net-tools build-essential)
+for pkg in "${DEPS[@]}"; do
+  dpkg -s "$pkg" &>/dev/null || sudo apt install -y "$pkg"
+done
 
 if ! command -v node &>/dev/null; then
   echo "⬇️ Installing Node.js..."
@@ -56,6 +61,16 @@ if ! command -v pm2 &>/dev/null; then
   sudo npm install -g pm2
 fi
 
+sudo ufw default allow outgoing
+sudo ufw allow ssh
+sudo ufw allow http
+sudo ufw allow 80
+sudo ufw allow https
+sudo ufw allow 443
+sudo ufw allow OpenSSH
+sudo ufw allow 3000/tcp
+sudo ufw --force enable
+
 ### 🚧 Bot Setup ###
 if [[ "$OPTION" == "1" ]]; then
   while true; do
@@ -67,7 +82,7 @@ if [[ "$OPTION" == "1" ]]; then
   done
 
   read -rp "Bot name: " BOT_NAME
-  BOT_NAME="${BOT_NAME//[^a-zA-Z0-9_-]/}"
+  BOT_NAME=$(echo "$BOT_NAME" | tr -cd '[:alnum:]_-')
 
   if [[ -z "$BOT_NAME" || -d "$BOTS_DIR/$BOT_NAME" ]]; then
     echo "❌ Invalid or duplicate bot name."
@@ -81,7 +96,7 @@ if [[ "$OPTION" == "1" ]]; then
 
   cd "$BOT_FOLDER"
   clear
-  
+
   if [[ "$BOT_TYPE" == "1" ]]; then
     [[ ! -f index.js ]] && echo "❌ index.js not found." && exit 1
     [[ -f package.json ]] && npm install || echo "⚠️ No package.json found."
@@ -92,9 +107,7 @@ if [[ "$OPTION" == "1" ]]; then
     pm2 start "python3 main.py" --name "$BOT_NAME" --log "$LOGS_DIR/$BOT_NAME.log"
   fi
 
-  # PM2 Startup (Safe)
-  STARTUP_CMD=$(pm2 startup | grep sudo)
-  eval "$STARTUP_CMD"
+  pm2 startup
   pm2 save
 
   echo "✅ Bot '$BOT_NAME' added and running."
@@ -117,6 +130,29 @@ elif [[ "$OPTION" == "2" ]]; then
     exit 1
   fi
 
+elif [[ "$OPTION" == "3" ]]; then
+  echo "🗑 Available Bots:"
+  ls -1 "$BOTS_DIR"
+  read -rp "Bot name to remove/stop: " BOT_NAME
+  BOT_FOLDER="$BOTS_DIR/$BOT_NAME"
+  [[ ! -d "$BOT_FOLDER" ]] && echo "❌ Bot not found" && exit 1
+
+  echo "1) Stop bot"
+  echo "2) Delete bot completely"
+  read -rp "Choose [1/2]: " CHOICE
+
+  if [[ "$CHOICE" == "1" ]]; then
+    pm2 stop "$BOT_NAME" && echo "⏹ Bot stopped."
+  elif [[ "$CHOICE" == "2" ]]; then
+    pm2 delete "$BOT_NAME"
+    rm -rf "$BOT_FOLDER"
+    rm -f "$LOGS_DIR/$BOT_NAME.log"
+    echo "🗑 Bot deleted."
+  else
+    echo "❌ Invalid option."
+    exit 1
+  fi
+
 else
   echo "👋 Exiting..."
   exit 0
@@ -125,7 +161,7 @@ fi
 ### 📊 Monitoring UI ###
 cd "$UI_DIR"
 
-if [[ ! -f node_modules ]]; then
+if [[ ! -d node_modules ]]; then
   npm init -y &>/dev/null
   npm install express systeminformation cors --save
 fi
@@ -197,9 +233,7 @@ cat > public/index.html << 'EOF'
               }]
             },
             options: {
-              scales: {
-                y: { beginAtZero: true, max: 100 }
-              }
+              scales: { y: { beginAtZero: true, max: 100 } }
             }
           });
         }
@@ -207,7 +241,6 @@ cat > public/index.html << 'EOF'
         document.getElementById('output').innerText = '❌ Error: ' + err;
       }
     }
-
     fetchData();
     setInterval(fetchData, 5000);
   </script>
