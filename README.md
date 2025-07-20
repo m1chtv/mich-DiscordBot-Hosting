@@ -17,6 +17,8 @@
 ## 🚀 Installation
 
 ```bash
+sudo apt update
+sudo apt install git
 git clone https://github.com/m1chtv/mich-DiscordBot-Hosting.git
 cd mich-DiscordBot-Hosting
 chmod +x mich-deploy.sh
