@@ -192,16 +192,18 @@ cat > public/index.html << 'EOF'
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Bot Monitor</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-  <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
 </head>
-<body class="bg-gray-900 text-white p-6 font-mono">
-  <h1 class="text-3xl mb-4">📡 Discord Bot Monitor</h1>
-  <div id="output" class="whitespace-pre text-green-400"></div>
-  <canvas id="cpuChart" class="my-6"></canvas>
+<body class="bg-dark text-white p-4">
+  <div class="container">
+    <h1 class="display-5 mb-4">📡 Discord Bot Monitor</h1>
+    <pre id="output" class="bg-black p-3 rounded"></pre>
+    <canvas id="cpuChart" class="my-4"></canvas>
+  </div>
   <script>
     async function fetchData() {
       try {
@@ -226,14 +228,17 @@ cat > public/index.html << 'EOF'
               labels: [new Date().toLocaleTimeString()],
               datasets: [{
                 label: 'CPU Load %',
-                backgroundColor: 'rgba(34,197,94,0.2)',
-                borderColor: '#22c55e',
+                backgroundColor: 'rgba(13, 202, 240, 0.2)',
+                borderColor: '#0dcaf0',
                 data: [cpu.currentload],
                 fill: true,
               }]
             },
             options: {
-              scales: { y: { beginAtZero: true, max: 100 } }
+              responsive: true,
+              scales: {
+                y: { beginAtZero: true, max: 100 }
+              }
             }
           });
         }
