@@ -284,7 +284,6 @@ cat > public/index.html << 'EOF'
   </nav>
 
   <div class="container-fluid">
-    <!-- Global System Stats -->
     <div class="row text-center mb-4">
       <div class="col-md-4 mb-3">
         <div class="bg-gradient-to-r from-blue-600 to-cyan-500 rounded-2xl p-4 shadow">
@@ -306,13 +305,11 @@ cat > public/index.html << 'EOF'
       </div>
     </div>
 
-    <!-- Bot Status Summary -->
     <div class="bg-zinc-800 p-4 rounded shadow mb-4">
       <h5><i class="fas fa-robot"></i> Hosted Bots</h5>
       <ul id="botList" class="list-group list-group-flush bg-transparent"></ul>
     </div>
 
-    <!-- Bot Detail (visible on select) -->
     <div id="botDetail" class="hidden">
       <div class="row">
         <div class="col-md-6 mb-3">
@@ -340,17 +337,28 @@ cat > public/index.html << 'EOF'
         const res = await fetch('/api/status');
         const data = await res.json();
 
-        document.getElementById("cpuUsage").textContent = data.cpu.currentload.toFixed(1) + "%";
-        document.getElementById("ramUsage").textContent = (data.mem.active / data.mem.total * 100).toFixed(1) + "%";
-        document.getElementById("netStats").textContent = `↑ ${data.net[0].tx_sec} B/s ↓ ${data.net[0].rx_sec} B/s`;
+        document.getElementById("cpuUsage").textContent =
+          data?.cpu?.currentload ? data.cpu.currentload.toFixed(1) + "%" : "--%";
+
+        document.getElementById("ramUsage").textContent =
+          data?.mem?.active && data.mem?.total
+            ? (data.mem.active / data.mem.total * 100).toFixed(1) + "%"
+            : "--%";
+
+        document.getElementById("netStats").textContent =
+          data?.net?.length
+            ? `↑ ${data.net[0].tx_sec} B/s ↓ ${data.net[0].rx_sec} B/s`
+            : "--";
+
 
         const botListEl = document.getElementById("botList");
         botListEl.innerHTML = '';
         data.processes.list.forEach(proc => {
+          if (!proc) return;
           if (proc.name.includes("bots/")) {
             const li = document.createElement("li");
             li.className = "list-group-item bg-dark text-white cursor-pointer";
-            li.innerHTML = `<b>${proc.name}</b> - ${proc.pcpu.toFixed(1)}% CPU, ${proc.pmem.toFixed(1)}% RAM`;
+            li.innerHTML = `<b>${proc.name}</b> - ${proc?.pcpu?.toFixed(1) ?? '0.0'}% CPU, ${proc?.pmem?.toFixed(1) ?? '0.0'}% RAM`;
             li.onclick = () => selectBot(proc.name);
             botListEl.appendChild(li);
           }
@@ -372,9 +380,10 @@ cat > public/index.html << 'EOF'
       try {
         const res = await fetch(`/api/logs/${name}`);
         const data = await res.json();
-        document.getElementById("botCpu").textContent = `CPU: ${data.cpu.toFixed(1)}%`;
-        document.getElementById("botRam").textContent = `RAM: ${data.ram.toFixed(1)}%`;
-        document.getElementById("botLogs").textContent = data.logs;
+        document.getElementById("botCpu").textContent = `CPU: ${data.cpu?.toFixed(1) ?? '0.0'}%`;
+        document.getElementById("botRam").textContent = `RAM: ${data.ram?.toFixed(1) ?? '0.0'}%`;
+        document.getElementById("botLogs").textContent = data.logs || "No logs available.";
+
       } catch (err) {
         document.getElementById("botLogs").textContent = "❌ Failed to load logs.";
       }
