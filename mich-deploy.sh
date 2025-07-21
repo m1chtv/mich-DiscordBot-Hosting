@@ -369,10 +369,13 @@ cat > public/index.html << 'EOF'
             ? data.cpu.currentload.toFixed(1) + "%"
             : "--%";
 
-        document.getElementById("ramUsage").textContent =
-          data?.mem?.active && data.mem?.total
-            ? (data.mem.active / data.mem.total * 100).toFixed(1) + "%"
-            : "--%";
+        function formatBytes(bytes) {
+          if (typeof bytes !== "number" || isNaN(bytes)) return "--";
+          if (bytes > 1024 * 1024) return (bytes / 1024 / 1024).toFixed(1) + " MB/s";
+          if (bytes > 1024) return (bytes / 1024).toFixed(1) + " KB/s";
+          return bytes.toFixed(1) + " B/s";
+        }
+
 
         function formatBytes(bytes) {
           if (bytes > 1024 * 1024) return (bytes / 1024 / 1024).toFixed(1) + " MB/s";
@@ -384,7 +387,6 @@ cat > public/index.html << 'EOF'
           data?.net?.length
             ? `↑ ${formatBytes(data.net[0].tx_sec)} ↓ ${formatBytes(data.net[0].rx_sec)}`
             : "--";
-
 
 
         const botListEl = document.getElementById("botList");
