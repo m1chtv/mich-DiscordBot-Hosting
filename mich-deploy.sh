@@ -206,49 +206,53 @@ cat > public/index.html << 'EOF'
     <canvas id="cpuChart" class="my-4"></canvas>
   </div>
 <script>
+  let cpuChart;
+
   async function fetchData() {
     try {
       const res = await fetch('/api/status');
       const data = await res.json();
       document.getElementById('output').textContent = JSON.stringify(data, null, 2);
 
-      const cpu = data.cpu?.currentload ?? 0;
-      const timeLabel = new Date().toLocaleTimeString();
+      const cpuLoad = data?.cpu?.currentload ?? 0;
+      const time = new Date().toLocaleTimeString();
 
-      if (!window.cpuChart) {
+      if (!cpuChart) {
         const ctx = document.getElementById('cpuChart').getContext('2d');
-        window.cpuChart = new Chart(ctx, {
+        cpuChart = new Chart(ctx, {
           type: 'line',
           data: {
-            labels: [timeLabel],
+            labels: [time],
             datasets: [{
               label: 'CPU Load %',
-              data: [cpu],
+              data: [cpuLoad],
               backgroundColor: 'rgba(13, 202, 240, 0.2)',
               borderColor: '#0dcaf0',
               fill: true,
+              tension: 0.3,
             }]
           },
           options: {
             responsive: true,
+            animation: true,
             scales: {
-              y: { beginAtZero: true, max: 100 }
+              y: { beginAtZero: true, max: 100 },
+              x: { ticks: { maxTicksLimit: 10 } }
             }
           }
         });
       } else {
-        const chart = window.cpuChart;
-        chart.data.labels.push(timeLabel);
-        chart.data.datasets[0].data.push(cpu);
+        cpuChart.data.labels.push(time);
+        cpuChart.data.datasets[0].data.push(cpuLoad);
 
-        if (chart.data.labels.length > 20) {
-          chart.data.labels.shift();
-          chart.data.datasets[0].data.shift();
+        if (cpuChart.data.labels.length > 20) {
+          cpuChart.data.labels.shift();
+          cpuChart.data.datasets[0].data.shift();
         }
-        chart.update();
+        cpuChart.update();
       }
     } catch (err) {
-      document.getElementById('output').innerText = '❌ Error: ' + err.message;
+      document.getElementById('output').innerText = '❌ Error: ' + (err.message || err);
     }
   }
 
@@ -256,10 +260,12 @@ cat > public/index.html << 'EOF'
   setInterval(fetchData, 5000);
 </script>
 
+
 </body>
 </html>
 EOF
 
+clear
 pm2 describe monitor-ui &>/dev/null || pm2 start index.js --name monitor-ui
 pm2 save
 
