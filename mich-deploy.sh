@@ -205,51 +205,57 @@ cat > public/index.html << 'EOF'
     <pre id="output" class="bg-black p-3 rounded"></pre>
     <canvas id="cpuChart" class="my-4"></canvas>
   </div>
-  <script>
-    async function fetchData() {
-      try {
-        const res = await fetch('/api/status');
-        const data = await res.json();
-        document.getElementById('output').textContent = JSON.stringify(data, null, 2);
+<script>
+  async function fetchData() {
+    try {
+      const res = await fetch('/api/status');
+      const data = await res.json();
+      document.getElementById('output').textContent = JSON.stringify(data, null, 2);
 
-        const cpu = data.cpu;
-        if (window.cpuChart) {
-          window.cpuChart.data.datasets[0].data.push(cpu.currentload);
-          window.cpuChart.data.labels.push(new Date().toLocaleTimeString());
-          if (window.cpuChart.data.labels.length > 20) {
-            window.cpuChart.data.labels.shift();
-            window.cpuChart.data.datasets[0].data.shift();
-          }
-          window.cpuChart.update();
-        } else {
-          const ctx = document.getElementById('cpuChart').getContext('2d');
-          window.cpuChart = new Chart(ctx, {
-            type: 'line',
-            data: {
-              labels: [new Date().toLocaleTimeString()],
-              datasets: [{
-                label: 'CPU Load %',
-                backgroundColor: 'rgba(13, 202, 240, 0.2)',
-                borderColor: '#0dcaf0',
-                data: [cpu.currentload],
-                fill: true,
-              }]
-            },
-            options: {
-              responsive: true,
-              scales: {
-                y: { beginAtZero: true, max: 100 }
-              }
+      const cpu = data.cpu?.currentload ?? 0;
+      const timeLabel = new Date().toLocaleTimeString();
+
+      if (!window.cpuChart) {
+        const ctx = document.getElementById('cpuChart').getContext('2d');
+        window.cpuChart = new Chart(ctx, {
+          type: 'line',
+          data: {
+            labels: [timeLabel],
+            datasets: [{
+              label: 'CPU Load %',
+              data: [cpu],
+              backgroundColor: 'rgba(13, 202, 240, 0.2)',
+              borderColor: '#0dcaf0',
+              fill: true,
+            }]
+          },
+          options: {
+            responsive: true,
+            scales: {
+              y: { beginAtZero: true, max: 100 }
             }
-          });
+          }
+        });
+      } else {
+        const chart = window.cpuChart;
+        chart.data.labels.push(timeLabel);
+        chart.data.datasets[0].data.push(cpu);
+
+        if (chart.data.labels.length > 20) {
+          chart.data.labels.shift();
+          chart.data.datasets[0].data.shift();
         }
-      } catch (err) {
-        document.getElementById('output').innerText = '❌ Error: ' + err;
+        chart.update();
       }
+    } catch (err) {
+      document.getElementById('output').innerText = '❌ Error: ' + err.message;
     }
-    fetchData();
-    setInterval(fetchData, 5000);
-  </script>
+  }
+
+  fetchData();
+  setInterval(fetchData, 5000);
+</script>
+
 </body>
 </html>
 EOF
