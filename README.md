@@ -49,6 +49,8 @@ After deployment, a web-based dashboard will be available at:
 
 ```
 http://<your-server-ip>:3000
+user: admin
+pass: admin
 ```
 
 This displays real-time system stats including:
@@ -99,25 +101,69 @@ You can edit `ui/public/index.html` to customize the look.
 
 ---
 
-## ☁️ Hosting Notes
+## 🔐 Enable HTTPS with NGINX & Let's Encrypt
 
-This script is intended for **personal VPS/servers**. Do not expose bot tokens in `.env` files without permissions. For production deployment, consider:
+### To serve your Mich Bot Panel securely over HTTPS, follow this setup:
 
-- Running on dedicated user with restricted permissions
-- Isolating bot environments with Docker (future version)
-- Adding a basic auth layer to the monitor UI (optional)
+## ✅ Requirements
+
+- A public VPS or cloud server (e.g., Ubuntu 20+)
+
+- A valid domain pointed to your server (e.g., panel.yourdomain.com)
+
+- Node.js app running on localhost:3000
+
+📦 1. Install NGINX & Certbot
+```
+sudo apt update
+sudo apt install nginx certbot python3-certbot-nginx -y
+```
+
+⚙️ 2. Configure NGINX
+Create a config file:
+```
+sudo nano /etc/nginx/sites-available/michBot
+```
+Paste this:
+```
+server {
+    listen 80;
+    server_name panel.yourdomain.com;
+
+    location / {
+        proxy_pass http://localhost:3000;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection 'upgrade';
+        proxy_set_header Host $host;
+        proxy_cache_bypass $http_upgrade;
+    }
+}
+```
+Enable and test:
+```
+sudo ln -s /etc/nginx/sites-available/michBot /etc/nginx/sites-enabled/
+sudo nginx -t
+sudo systemctl reload nginx
+```
+
+🔐 3. Get SSL with Let’s Encrypt
+```
+sudo certbot --nginx -d panel.yourdomain.com
+```
+
+🧠 Done!
+Your panel is now live at:
+```
+https://panel.yourdomain.com
+```
+With valid SSL & auto-renew.
 
 ---
 
 ## ⭐ Star the Project
 
 If you found this helpful, star the repo on GitHub: [github.com/m1chtv/mich-DiscordBot-Hosting](https://github.com/m1chtv/mich-DiscordBot-Hosting)
-
----
-
-## 🧩 Future Features (Planned)
-
--
 
 ---
 
