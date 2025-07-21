@@ -170,98 +170,301 @@ fi
 cat > index.js << 'EOF'
 const express = require("express");
 const si = require("systeminformation");
+const fs = require("fs");
+const os = require("os");
+const cors = require("cors");
+const session = require("express-session");
+const bodyParser = require("body-parser");
+const path = require("path");
+
 const app = express();
 const PORT = 3000;
+const LOG_DIR = `${os.homedir()}/discord-bots/logs`;
+const ADMIN_USER = "admin";
+const ADMIN_PASS = "admin";
 
-app.use(require("cors")());
-app.get("/api/status", async (_, res) => {
+app.use(cors());
+app.use(bodyParser.urlencoded({ extended: false }));
+app.use(session({
+  secret: "mich_super_secret",
+  resave: false,
+  saveUninitialized: true,
+  cookie: { maxAge: 3600000 }
+}));
+
+function authOnly(req, res, next) {
+  if (req.session.loggedIn) return next();
+  return res.redirect("/login");
+}
+
+app.use("/", authOnly, express.static("public"));
+
+app.get("/login", (req, res) => {
+  res.sendFile(path.join(__dirname, "public", "login.html"));
+});
+
+app.post("/login", (req, res) => {
+  const { username, password } = req.body;
+  if (username === ADMIN_USER && password === ADMIN_PASS) {
+    req.session.loggedIn = true;
+    return res.redirect("/");
+  }
+  res.send("<p>❌ Login failed. <a href='/login'>Try again</a></p>");
+});
+
+app.get("/logout", (req, res) => {
+  req.session.destroy(() => res.redirect("/login"));
+});
+
+app.get("/api/status", authOnly, async (_, res) => {
   try {
     const [cpu, mem, fs, net, processes] = await Promise.all([
-      si.currentLoad(), si.mem(), si.fsSize(), si.networkStats(), si.processes()
+      si.currentLoad(),
+      si.mem(),
+      si.fsSize(),
+      si.networkStats(),
+      si.processes()
     ]);
     res.json({ cpu, mem, fs, net, processes });
   } catch (e) {
     res.status(500).json({ error: "Monitoring error", details: e.message });
   }
 });
-app.use(express.static("public"));
-app.listen(PORT, '0.0.0.0', () => console.log(`🌐 Monitor: http://localhost:${PORT}`));
+
+app.get("/api/logs/:bot", authOnly, async (req, res) => {
+  try {
+    const bot = req.params.bot;
+    const logFile = `${LOG_DIR}/${bot}.log`;
+    const logs = fs.existsSync(logFile)
+      ? fs.readFileSync(logFile, "utf-8").split("\n").slice(-50).join("\n")
+      : "❌ Log file not found.";
+
+    const processes = (await si.processes()).list;
+    const proc = processes.find(p => p.name === bot);
+
+    res.json({
+      cpu: proc?.pcpu ?? 0,
+      ram: proc?.pmem ?? 0,
+      logs
+    });
+  } catch (err) {
+    res.status(500).json({ error: "Log fetch error", details: err.message });
+  }
+});
+
+app.listen(PORT, "0.0.0.0", () => {
+  console.log(`🔐 Panel running: http://localhost:${PORT}`);
+});
 EOF
 
 mkdir -p public
 cat > public/index.html << 'EOF'
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" class="scroll-smooth">
+
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Bot Monitor</title>
-  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
-  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>michBot Panel</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+  <script src="https://cdn.tailwindcss.com"></script>
 </head>
-<body class="bg-dark text-white p-4">
-  <div class="container">
-    <h1 class="display-5 mb-4">📡 Discord Bot Monitor</h1>
-    <pre id="output" class="bg-black p-3 rounded"></pre>
-    <canvas id="cpuChart" class="my-4"></canvas>
+
+<body class="bg-zinc-900 text-white font-sans">
+
+  <!-- Navbar -->
+  <nav class="navbar navbar-dark bg-dark px-4 mb-4">
+    <span class="navbar-brand mb-0 h1">🧠 Mich Panel</span>
+    <div>
+      <a href="https://github.com/m1chtv" target="_blank" class="text-white me-3"><i class="fab fa-github"></i>
+        GitHub</a>
+      <a href="https://m1ch.ir" target="_blank" class="text-white"><i class="fas fa-globe"></i> Website</a>
+    </div>
+  </nav>
+
+  <div class="container-fluid">
+    <!-- Global System Stats -->
+    <div class="row text-center mb-4">
+      <div class="col-md-4 mb-3">
+        <div class="bg-gradient-to-r from-blue-600 to-cyan-500 rounded-2xl p-4 shadow">
+          <h5><i class="fas fa-microchip"></i> CPU Usage</h5>
+          <p id="cpuUsage" class="text-2xl font-bold">--%</p>
+        </div>
+      </div>
+      <div class="col-md-4 mb-3">
+        <div class="bg-gradient-to-r from-green-600 to-emerald-400 rounded-2xl p-4 shadow">
+          <h5><i class="fas fa-memory"></i> RAM Usage</h5>
+          <p id="ramUsage" class="text-2xl font-bold">--%</p>
+        </div>
+      </div>
+      <div class="col-md-4 mb-3">
+        <div class="bg-gradient-to-r from-indigo-600 to-purple-500 rounded-2xl p-4 shadow">
+          <h5><i class="fas fa-network-wired"></i> Network</h5>
+          <p id="netStats" class="text-lg">--</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Bot Status Summary -->
+    <div class="bg-zinc-800 p-4 rounded shadow mb-4">
+      <h5><i class="fas fa-robot"></i> Hosted Bots</h5>
+      <ul id="botList" class="list-group list-group-flush bg-transparent"></ul>
+    </div>
+
+    <!-- Bot Detail (visible on select) -->
+    <div id="botDetail" class="hidden">
+      <div class="row">
+        <div class="col-md-6 mb-3">
+          <div class="bg-zinc-800 p-3 rounded shadow">
+            <h6>CPU & RAM Usage</h6>
+            <p id="botCpu">CPU: --%</p>
+            <p id="botRam">RAM: --%</p>
+          </div>
+        </div>
+        <div class="col-md-6 mb-3">
+          <div class="bg-zinc-800 p-3 rounded shadow">
+            <h6>Logs</h6>
+            <pre id="botLogs" class="text-sm overflow-y-auto max-h-64 bg-black rounded p-2"></pre>
+          </div>
+        </div>
+      </div>
+    </div>
   </div>
-<script>
-  let cpuChart;
 
-  async function fetchData() {
-    try {
-      const res = await fetch('/api/status');
-      const data = await res.json();
-      document.getElementById('output').textContent = JSON.stringify(data, null, 2);
+  <script>
+    let selectedBot = null;
 
-      const cpuLoad = data?.cpu?.currentload ?? 0;
-      const time = new Date().toLocaleTimeString();
+    async function fetchStats() {
+      try {
+        const res = await fetch('/api/status');
+        const data = await res.json();
 
-      if (!cpuChart) {
-        const ctx = document.getElementById('cpuChart').getContext('2d');
-        cpuChart = new Chart(ctx, {
-          type: 'line',
-          data: {
-            labels: [time],
-            datasets: [{
-              label: 'CPU Load %',
-              data: [cpuLoad],
-              backgroundColor: 'rgba(13, 202, 240, 0.2)',
-              borderColor: '#0dcaf0',
-              fill: true,
-              tension: 0.3,
-            }]
-          },
-          options: {
-            responsive: true,
-            animation: true,
-            scales: {
-              y: { beginAtZero: true, max: 100 },
-              x: { ticks: { maxTicksLimit: 10 } }
-            }
+        document.getElementById("cpuUsage").textContent = data.cpu.currentload.toFixed(1) + "%";
+        document.getElementById("ramUsage").textContent = (data.mem.active / data.mem.total * 100).toFixed(1) + "%";
+        document.getElementById("netStats").textContent = `↑ ${data.net[0].tx_sec} B/s ↓ ${data.net[0].rx_sec} B/s`;
+
+        const botListEl = document.getElementById("botList");
+        botListEl.innerHTML = '';
+        data.processes.list.forEach(proc => {
+          if (proc.name.includes("bots/")) {
+            const li = document.createElement("li");
+            li.className = "list-group-item bg-dark text-white cursor-pointer";
+            li.innerHTML = `<b>${proc.name}</b> - ${proc.pcpu.toFixed(1)}% CPU, ${proc.pmem.toFixed(1)}% RAM`;
+            li.onclick = () => selectBot(proc.name);
+            botListEl.appendChild(li);
           }
         });
-      } else {
-        cpuChart.data.labels.push(time);
-        cpuChart.data.datasets[0].data.push(cpuLoad);
 
-        if (cpuChart.data.labels.length > 20) {
-          cpuChart.data.labels.shift();
-          cpuChart.data.datasets[0].data.shift();
-        }
-        cpuChart.update();
+        if (selectedBot) fetchBotDetails(selectedBot);
+      } catch (err) {
+        console.error('❌ Error fetching stats:', err);
       }
-    } catch (err) {
-      document.getElementById('output').innerText = '❌ Error: ' + (err.message || err);
     }
-  }
 
-  fetchData();
-  setInterval(fetchData, 5000);
-</script>
+    async function selectBot(name) {
+      selectedBot = name;
+      document.getElementById("botDetail").classList.remove("hidden");
+      fetchBotDetails(name);
+    }
 
+    async function fetchBotDetails(name) {
+      try {
+        const res = await fetch(`/api/logs/${name}`);
+        const data = await res.json();
+        document.getElementById("botCpu").textContent = `CPU: ${data.cpu.toFixed(1)}%`;
+        document.getElementById("botRam").textContent = `RAM: ${data.ram.toFixed(1)}%`;
+        document.getElementById("botLogs").textContent = data.logs;
+      } catch (err) {
+        document.getElementById("botLogs").textContent = "❌ Failed to load logs.";
+      }
+    }
+
+    fetchStats();
+    setInterval(fetchStats, 30000);
+  </script>
 
 </body>
+
+</html>
+EOF
+
+cat > public/login.html << 'EOF'
+<!DOCTYPE html>
+<html lang="en" class="bg-zinc-900 text-white">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Login | michBot Panel</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" />
+  <style>
+    body {
+      background: linear-gradient(145deg, #0f0f0f, #1f1f1f);
+    }
+
+    .login-card {
+      background-color: #18181b;
+      border: 1px solid #2e2e2e;
+      border-radius: 1rem;
+      box-shadow: 0 0 30px rgba(0, 0, 0, 0.6);
+      padding: 2.5rem;
+      transition: all 0.3s ease;
+    }
+
+    .login-card:hover {
+      transform: scale(1.01);
+      box-shadow: 0 0 50px rgba(0, 102, 255, 0.3);
+    }
+
+    .form-control {
+      background-color: #2c2c2e;
+      color: white;
+      border: 1px solid #444;
+    }
+
+    .form-control:focus {
+      background-color: #2c2c2e;
+      border-color: #0d6efd;
+      box-shadow: none;
+      color: white;
+    }
+
+    .btn-primary {
+      background-color: #0d6efd;
+      border: none;
+    }
+
+    .btn-primary:hover {
+      background-color: #0b5ed7;
+    }
+
+    ::placeholder {
+      color: #aaa;
+    }
+
+    .text-glow {
+      color: #ffffff;
+      text-shadow: 0 0 8px #0d6efd;
+    }
+  </style>
+</head>
+
+<body class="d-flex justify-content-center align-items-center vh-100">
+  <form method="POST" action="/login" class="login-card w-100" style="max-width: 400px;">
+    <h3 class="mb-4 text-center text-glow">🔐 Admin Login</h3>
+    <div class="mb-3">
+      <label for="username" class="form-label visually-hidden">Username</label>
+      <input type="text" name="username" id="username" class="form-control" placeholder="Username" required />
+    </div>
+    <div class="mb-4">
+      <label for="password" class="form-label visually-hidden">Password</label>
+      <input type="password" name="password" id="password" class="form-control" placeholder="Password" required />
+    </div>
+    <button type="submit" class="btn btn-primary w-100">Login</button>
+  </form>
+</body>
+
 </html>
 EOF
 
