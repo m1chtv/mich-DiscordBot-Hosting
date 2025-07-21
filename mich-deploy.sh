@@ -197,8 +197,6 @@ function authOnly(req, res, next) {
   return res.redirect("/login");
 }
 
-app.use("/", authOnly, express.static("public"));
-
 app.get("/login", (req, res) => {
   res.sendFile(path.join(__dirname, "public", "login.html"));
 });
@@ -211,6 +209,8 @@ app.post("/login", (req, res) => {
   }
   res.send("<p>❌ Login failed. <a href='/login'>Try again</a></p>");
 });
+
+app.use("/", authOnly, express.static("public"));
 
 app.get("/logout", (req, res) => {
   req.session.destroy(() => res.redirect("/login"));
