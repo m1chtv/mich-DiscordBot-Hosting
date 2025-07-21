@@ -18,7 +18,7 @@
 
 ```bash
 sudo apt update
-sudo apt install git
+sudo apt install git -y
 git clone https://github.com/m1chtv/mich-DiscordBot-Hosting.git
 cd mich-DiscordBot-Hosting
 chmod +x mich-deploy.sh
