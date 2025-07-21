@@ -173,6 +173,7 @@ const si = require("systeminformation");
 const fs = require("fs");
 const os = require("os");
 const cors = require("cors");
+const pm2 = require("pm2");
 const session = require("express-session");
 const bodyParser = require("body-parser");
 const path = require("path");
@@ -218,14 +219,30 @@ app.get("/logout", (req, res) => {
 
 app.get("/api/status", authOnly, async (_, res) => {
   try {
-    const [cpu, mem, fs, net, processes] = await Promise.all([
+    const [cpu, mem, fs, net] = await Promise.all([
       si.currentLoad(),
       si.mem(),
       si.fsSize(),
-      si.networkStats(),
-      si.processes()
+      si.networkStats()
     ]);
-    res.json({ cpu, mem, fs, net, processes });
+
+    pm2.connect(err => {
+      if (err) return res.status(500).json({ error: "PM2 connection failed", details: err.message });
+
+      pm2.list((err, list) => {
+        pm2.disconnect();
+        if (err) return res.status(500).json({ error: "PM2 list error", details: err.message });
+
+        const processes = list.map(proc => ({
+          name: proc.name,
+          pm_id: proc.pm_id,
+          cpu: proc.monit.cpu,
+          memory: (proc.monit.memory / mem.total) * 100
+        }));
+
+        res.json({ cpu, mem, fs, net, processes });
+      });
+    });
   } catch (e) {
     res.status(500).json({ error: "Monitoring error", details: e.message });
   }
@@ -239,18 +256,28 @@ app.get("/api/logs/:bot", authOnly, async (req, res) => {
       ? fs.readFileSync(logFile, "utf-8").split("\n").slice(-50).join("\n")
       : "❌ Log file not found.";
 
-    const processes = (await si.processes()).list;
-    const proc = processes.find(p => p.name === bot);
+    pm2.connect(err => {
+      if (err) return res.status(500).json({ error: "PM2 connection failed" });
 
-    res.json({
-      cpu: proc?.pcpu ?? 0,
-      ram: proc?.pmem ?? 0,
-      logs
+      pm2.list((err, list) => {
+        pm2.disconnect();
+        if (err) return res.status(500).json({ error: "PM2 list error" });
+
+        const proc = list.find(p => p.name === bot);
+        if (!proc) return res.status(404).json({ error: "Bot not found in PM2" });
+
+        res.json({
+          cpu: proc.monit.cpu,
+          ram: (proc.monit.memory / os.totalmem()) * 100,
+          logs
+        });
+      });
     });
   } catch (err) {
     res.status(500).json({ error: "Log fetch error", details: err.message });
   }
 });
+
 
 app.listen(PORT, "0.0.0.0", () => {
   console.log(`🔐 Panel running: http://localhost:${PORT}`);
@@ -338,31 +365,39 @@ cat > public/index.html << 'EOF'
         const data = await res.json();
 
         document.getElementById("cpuUsage").textContent =
-          data?.cpu?.currentload ? data.cpu.currentload.toFixed(1) + "%" : "--%";
+          data.cpu && typeof data.cpu.currentload === 'number'
+            ? data.cpu.currentload.toFixed(1) + "%"
+            : "--%";
 
         document.getElementById("ramUsage").textContent =
           data?.mem?.active && data.mem?.total
             ? (data.mem.active / data.mem.total * 100).toFixed(1) + "%"
             : "--%";
 
+        function formatBytes(bytes) {
+          if (bytes > 1024 * 1024) return (bytes / 1024 / 1024).toFixed(1) + " MB/s";
+          if (bytes > 1024) return (bytes / 1024).toFixed(1) + " KB/s";
+          return bytes.toFixed(1) + " B/s";
+        }
+
         document.getElementById("netStats").textContent =
           data?.net?.length
-            ? `↑ ${data.net[0].tx_sec} B/s ↓ ${data.net[0].rx_sec} B/s`
+            ? `↑ ${formatBytes(data.net[0].tx_sec)} ↓ ${formatBytes(data.net[0].rx_sec)}`
             : "--";
+
 
 
         const botListEl = document.getElementById("botList");
         botListEl.innerHTML = '';
-        data.processes.list.forEach(proc => {
-          if (!proc) return;
-          if (proc.name.includes("bots/")) {
-            const li = document.createElement("li");
-            li.className = "list-group-item bg-dark text-white cursor-pointer";
-            li.innerHTML = `<b>${proc.name}</b> - ${proc?.pcpu?.toFixed(1) ?? '0.0'}% CPU, ${proc?.pmem?.toFixed(1) ?? '0.0'}% RAM`;
-            li.onclick = () => selectBot(proc.name);
-            botListEl.appendChild(li);
-          }
+        data.processes.forEach(proc => {
+          const li = document.createElement("li");
+          li.className = "list-group-item bg-dark text-white cursor-pointer";
+          li.innerHTML = `<b>${proc.name}</b> - ${proc.cpu.toFixed(1)}% CPU, ${proc.memory.toFixed(1)}% RAM`;
+          li.onclick = () => selectBot(proc.name);
+          botListEl.appendChild(li);
         });
+
+
 
         if (selectedBot) fetchBotDetails(selectedBot);
       } catch (err) {
