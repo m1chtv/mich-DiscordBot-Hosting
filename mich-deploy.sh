@@ -109,6 +109,7 @@ if [[ "$OPTION" == "1" ]]; then
 
   pm2 startup
   pm2 save
+  clear
 
   echo "✅ Bot '$BOT_NAME' added and running."
 
