@@ -164,7 +164,7 @@ cd "$UI_DIR"
 
 if [[ ! -d node_modules ]]; then
   npm init -y &>/dev/null
-  npm install express systeminformation cors --save
+  npm install express systeminformation cors express-session body-parser --save
 fi
 
 cat > index.js << 'EOF'
