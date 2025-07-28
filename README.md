@@ -171,5 +171,5 @@ If you found this helpful, star the repo on GitHub: [github.com/m1chtv/mich-Disc
 
 ## 🧠 License
 
-AGPL-3.0 © 2025 m1chtv
+GPL-3.0 © 2025 m1chtv
 
